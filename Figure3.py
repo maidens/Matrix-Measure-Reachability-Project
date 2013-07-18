@@ -1,12 +1,12 @@
 ###############################################################################
 ##
-##  Figure2.py
+##  Figure3.py
 ##
 ##  Computes overapproximations of reachable set for tunnel diode oscillator
 ##  using algorithms described in "Reachability analysis of nonlinear
 ##  systems using matrix measures" by John Maidens and Murat Arcak
 ##
-##  Used to produce Figure 2 from this paper
+##  Used to produce parts (a) and (c) of Figure 3 from this paper
 ##
 ##  John Maidens
 ##  July 17, 2013
@@ -57,12 +57,12 @@ def Jac(t,x):
 # X0 = array([0.45, 0.1])
 
 # ODE Integration parameters
-tmax = 9.01
-num_points = 400
+tmax = 0.5
+num_points = 10
 tolerance = 1e-08
 
 # Initial ball size
-e0 = 1.5e-03
+e0 = 0.035
 
 # Bound on vector field
 M = 0
@@ -104,7 +104,7 @@ class ReachTrace:
         self.V = [X0[0]]
         self.I = [X0[1]]
         self.T = [0]
-        while r.successful() and r.t +dt < tmax:
+        while r.successful() and r.t +dt < tmax+0.02:
             r.integrate(r.t+dt)
             t += 1
             self.X.append(r.y)
@@ -127,6 +127,7 @@ class ReachTrace:
         
         self.d1 = [e0]
         self.d2 = [e0]
+        self.theta = [0]
         c = []
         for i in range(len(self.T)-1):
             # compute maximal expansion rate c_i in a neigbourhood of V[i] using global vector field bound M
@@ -232,30 +233,29 @@ class TraceArray(list):
     def plotReachSet(self, NUM, figname):
         fig = p.figure()
         ax = fig.add_subplot(111, aspect='equal')
-        ax.set_xlim(-0.1, 0.6)
-        ax.set_ylim(-0.2, 0.6)
+        ax.set_xlim(0.3, 0.6)
+        ax.set_ylim(0.3, 0.6)
+        ax.set_title('t = 0.5')
         for trace in self:
+            print [int(floor(k*len(trace.T)/NUM)) for k in range(NUM)]
+            print trace.T
             for i in [int(floor(k*len(trace.T)/NUM)) for k in range(NUM)]:
-                e = Ellipse((trace.V[i],trace.I[i]), width=trace.d1[i], height=trace.d2[i], angle=trace.theta[i])
+                #print trace.d1[i]
+                #print trace.V[i]
+                #print trace.theta[i]
+                e = Ellipse((trace.V[i],trace.I[i]), width=2*trace.d1[i], height=2*trace.d2[i], angle=trace.theta[i])
                 ax.add_artist(e)
                 e.set_clip_box(ax.bbox)
                 e.set_alpha(1)
                 e.set_facecolor(p.rand(3))
-        for trace in self:
-                e = Ellipse((trace.V[0],trace.I[0]), width=trace.d1[0], height=trace.d2[0], angle=trace.theta[0])
-                ax.add_artist(e)
-                e.set_clip_box(ax.bbox)
-                e.set_alpha(1)
-                e.set_facecolor('r')
-                e.set_edgecolor('r')
         p.savefig(figname)
 
     # Plot all solutions of ODE
     def plotODE(self, NUM, figname):
         fig = p.figure()
         ax = fig.add_subplot(111, aspect='equal')
-        ax.set_xlim(-0.1, 0.6)
-        ax.set_ylim(-0.2, 0.6)
+        ax.set_xlim(0.3, 0.6)
+        ax.set_ylim(0.3, 0.6)
         for trace in self:
             Vplot = []
             Iplot = []
@@ -279,11 +279,11 @@ class TraceArray(list):
 param = [num_points, tolerance]
 
 # Set number minimum and maximum x values and number of traces to plot in between
-xmin = 0.45
+xmin = 0.5
 xmax = 0.5
-num_traces = 15
+num_traces = 1
 
-num_plot = 400
+num_plot = 11
 
 
 # Perform Algorithm 3 for each initial ball
@@ -294,7 +294,7 @@ for x in linspace(xmax, xmin, num_traces):
     i += 1
     print 'Computing reach set with Alg 3 from initial ball', i, 'of', num_traces, '...'
     # Initial condition
-    X0 = array([x, 0.1])
+    X0 = array([x, 0.5])
     trace = ReachTrace(f, Jac, X0, tmax, param)
     trace.algorithm3(e0, M)
     Earray_Alg3.append(trace)
@@ -309,38 +309,10 @@ output.close()
 
 # Plot the results
 print 'Saving files...'
-Earray_Alg3.plotODE(num_plot, 'plotReachSet_Brute_Force.pdf')
-Earray_Alg3.plotReachSet(num_plot, 'plotReachSet_Algorithm_3.pdf')
+Earray_Alg3.plotReachSet(num_plot, 'plotReachSet_measure_point5sec.pdf')
 
 
 
-# Perform Algorithm 4 for each initial ball
-Earray_Alg4 = TraceArray()
-
-i = 0
-for x in linspace(xmax, xmin, num_traces):
-    i += 1
-    print 'Computing reach set with Alg 4 from initial ball', i, 'of', num_traces, '...'
-    # Initial condition
-    X0 = array([x, 0.1])
-    trace = ReachTrace(f, Jac, X0, tmax, param)
-    Gamma0 = 1/(e0*e0)*eye(2)
-
-    trace.algorithm4(Gamma0, M)
-    Earray_Alg4.append(trace)
-
-# Save data in json format
-data = []
-for trace in Earray_Alg4:
-    data.append([trace.V, trace.I, trace.d1, trace.d2, trace.theta])
-output = open('data_plotReachSet_Algorithm_4.json', 'wb')
-json.dump(data, output)
-output.close()
-
-# Plot the results
-print 'Saving files...'
-Earray_Alg4.plotReachSet(num_plot, 'plotReachSet_Algorithm_4.pdf')
-print 'Finished'
 
 
 
